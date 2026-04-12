@@ -42,11 +42,12 @@ def refresh_snapshot
   warn "Warning: refresh failed; using latest cached session data."
 end
 
-def latest_secondary_rate_limit
+def latest_rate_limits
   files = Dir[File.expand_path("~/.codex/sessions/*/*/*/rollout-*.jsonl")]
   return nil if files.empty?
 
   latest = files.max_by { |p| File.mtime(p) }
+  primary = nil
   secondary = nil
 
   File.foreach(latest) do |line|
@@ -57,13 +58,17 @@ def latest_secondary_rate_limit
     end
 
     rl = obj.dig("payload", "rate_limits") || {}
+    pri = rl["primary"] || {}
     sec = rl["secondary"] || {}
+    if pri.key?("used_percent") && pri.key?("resets_at")
+      primary = pri
+    end
     if sec.key?("used_percent") && sec.key?("resets_at")
       secondary = sec
     end
   end
 
-  secondary
+  { "primary" => primary, "secondary" => secondary }
 end
 
 def snapshot_today?(snapshot)
@@ -147,6 +152,9 @@ end
 
 options = parse_args(ARGV)
 snapshot = load_daily_snapshot
+rate_limits = latest_rate_limits
+abort("No session files found.") if rate_limits.nil?
+primary = rate_limits["primary"]
 if snapshot
   reset_epoch = snapshot["weekly_reset_epoch"]
   reset_time_obj = reset_epoch.nil? ? nil : Time.at(reset_epoch.to_i)
@@ -155,7 +163,10 @@ else
   # First calculation of the day is anchored to fresh session data.
   refresh_snapshot
 
-  secondary = latest_secondary_rate_limit
+  rate_limits = latest_rate_limits
+  abort("No session files found.") if rate_limits.nil?
+  secondary = rate_limits["secondary"]
+  primary = rate_limits["primary"]
   abort("No session files found.") if secondary.nil?
 
   result = build_result(secondary)
@@ -178,30 +189,45 @@ left = result["weekly_context_left_percent"]
 daily_budget = result["daily_context_budget_percent"]
 after_today = result["weekly_context_after_today_budget_percent"]
 reset_time_obj = result["_reset_time_obj"]
+five_hour_left = primary && primary.key?("used_percent") ? (100.0 - primary["used_percent"].to_f) : nil
+five_hour_reset_time = primary && primary.key?("resets_at") ? Time.at(primary["resets_at"].to_i) : nil
+five_hour_segment =
+  if five_hour_left.nil? || five_hour_reset_time.nil?
+    "5h limit unavailable"
+  else
+    format(
+      "5h limit: %.0f%% left (resets %s)",
+      five_hour_left.round,
+      five_hour_reset_time.strftime("%H:%M")
+    )
+  end
 
 abort("No weekly rate limit found.") if left.nil? || reset_time_obj.nil?
 
 if after_today.nil?
   if daily_budget.nil?
     puts format(
-      "Weekly limit: %.0f%% left (resets %s) - today's budget is unavailable",
+      "Weekly limit: %.0f%% left (resets %s) - %s - today's budget is unavailable",
       left.round,
-      reset_time_obj.strftime("%H:%M on %d %b")
+      reset_time_obj.strftime("%H:%M on %d %b"),
+      five_hour_segment
     )
   else
     puts format(
-      "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - today's budget is unavailable",
+      "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - %s - today's budget is unavailable",
       left.round,
       reset_time_obj.strftime("%H:%M on %d %b"),
-      daily_budget.round
+      daily_budget.round,
+      five_hour_segment
     )
   end
 else
   puts format(
-    "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - today's budget is until %.0f%% is left",
+    "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - %s - today's budget is until %.0f%% is left",
     left.round,
     reset_time_obj.strftime("%H:%M on %d %b"),
     daily_budget.round,
+    five_hour_segment,
     after_today.round
   )
 end
