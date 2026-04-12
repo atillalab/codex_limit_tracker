@@ -15,7 +15,7 @@ ruby codex_limit_tracker.rb
 - Freezes the day’s budget from the first successful run of that local day.
 - Stores the frozen baseline in `~/.codex/limit_tracker_daily_snapshot.json`.
 - Output example:
-  `Weekly limit: 64% left (resets 21:02 on 16 Apr) - today's budget is until 51% is left`
+  `Weekly limit: 64% left (resets 21:02 on 16 Apr) - 13% daily budget - today's budget is until 51% is left`
 
 ```bash
 ruby codex_limit_tracker.rb --json

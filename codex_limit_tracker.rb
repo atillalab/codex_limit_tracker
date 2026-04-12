@@ -163,28 +163,45 @@ else
 end
 
 if options[:json]
-  output = result.reject { |k, _| k.start_with?("_") }
+  output = {
+    "weekly_reset_date" => result["weekly_reset_date"],
+    "weekly_context_left_percent" => result["weekly_context_left_percent"],
+    "days_until_weekly_reset" => result["days_until_weekly_reset"],
+    "daily_context_budget_percent" => result["daily_context_budget_percent"],
+    "weekly_context_after_today_budget_percent" => result["weekly_context_after_today_budget_percent"]
+  }
   puts JSON.generate(output)
   exit 0
 end
 
 left = result["weekly_context_left_percent"]
+daily_budget = result["daily_context_budget_percent"]
 after_today = result["weekly_context_after_today_budget_percent"]
 reset_time_obj = result["_reset_time_obj"]
 
 abort("No weekly rate limit found.") if left.nil? || reset_time_obj.nil?
 
 if after_today.nil?
-  puts format(
-    "Weekly limit: %.0f%% left (resets %s) - today's budget is unavailable",
-    left.round,
-    reset_time_obj.strftime("%H:%M on %d %b")
-  )
+  if daily_budget.nil?
+    puts format(
+      "Weekly limit: %.0f%% left (resets %s) - today's budget is unavailable",
+      left.round,
+      reset_time_obj.strftime("%H:%M on %d %b")
+    )
+  else
+    puts format(
+      "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - today's budget is unavailable",
+      left.round,
+      reset_time_obj.strftime("%H:%M on %d %b"),
+      daily_budget.round
+    )
+  end
 else
   puts format(
-    "Weekly limit: %.0f%% left (resets %s) - today's budget is until %.0f%% is left",
+    "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - today's budget is until %.0f%% is left",
     left.round,
     reset_time_obj.strftime("%H:%M on %d %b"),
+    daily_budget.round,
     after_today.round
   )
 end
