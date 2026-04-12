@@ -1,21 +1,30 @@
 # README
 
-- `prompt-v4.txt` -> latest prompt to use directly from Codex CLI
-- `weekly_limit.rb` -> reads weekly limit data from local Codex session logs (`~/.codex/sessions`)
+- `codex_limit_tracker.rb` -> unified weekly limit tool for human text and `--json` machine output
 
-## weekly_limit.rb
+## codex_limit_tracker.rb
 
 Usage:
 
 ```bash
-ruby weekly_limit.rb
+ruby codex_limit_tracker.rb
 ```
 
-- Fast mode.
-- Uses latest cached session snapshot.
+- Default human mode.
+- Uses latest cached session snapshot from `~/.codex/sessions`.
+- Output example:
+  `Weekly limit: 64% left (resets 21:02 on 16 Apr) - today's budget is until 51% is left`
 
 ```bash
-ruby weekly_limit.rb --refresh
+ruby codex_limit_tracker.rb --json
+```
+
+- Machine mode.
+- Outputs only JSON:
+  `{"weekly_reset_date":"YYYY-MM-DD","weekly_context_left_percent":number,"days_until_weekly_reset":number,"daily_context_budget_percent":number,"weekly_context_after_today_budget_percent":number}`
+
+```bash
+ruby codex_limit_tracker.rb --refresh
 ```
 
 - Refresh mode.
@@ -23,7 +32,7 @@ ruby weekly_limit.rb --refresh
 - If refresh fails, script warns and falls back to cached data.
 
 ```bash
-ruby weekly_limit.rb --help
+ruby codex_limit_tracker.rb --help
 ```
 
 - Shows available options.
