@@ -4,6 +4,7 @@ require "time"
 require "date"
 
 REFRESH_CMD = 'codex exec --skip-git-repo-check --sandbox read-only "ping"'.freeze
+SNAPSHOT_PATH = File.expand_path("~/.codex/limit_tracker_daily_snapshot.json").freeze
 
 def usage
   <<~TEXT
@@ -65,6 +66,54 @@ def latest_secondary_rate_limit
   secondary
 end
 
+def snapshot_today?(snapshot)
+  snapshot["snapshot_date"] == Date.today.strftime("%Y-%m-%d")
+end
+
+def snapshot_stale_for_weekly_reset?(snapshot)
+  reset_epoch = snapshot["weekly_reset_epoch"]
+  return false if reset_epoch.nil?
+
+  Time.now.to_i >= reset_epoch.to_i
+end
+
+def load_daily_snapshot
+  return nil unless File.file?(SNAPSHOT_PATH)
+
+  begin
+    raw = File.read(SNAPSHOT_PATH)
+    snapshot = JSON.parse(raw)
+  rescue Errno::ENOENT, JSON::ParserError
+    return nil
+  end
+
+  return nil unless snapshot.is_a?(Hash)
+  return nil unless snapshot_today?(snapshot)
+  return nil if snapshot_stale_for_weekly_reset?(snapshot)
+
+  snapshot
+end
+
+def save_daily_snapshot(result)
+  dir = File.dirname(SNAPSHOT_PATH)
+  Dir.mkdir(dir) unless Dir.exist?(dir)
+
+  payload = {
+    "snapshot_date" => Date.today.strftime("%Y-%m-%d"),
+    "captured_at" => Time.now.iso8601,
+    "weekly_reset_date" => result["weekly_reset_date"],
+    "weekly_reset_epoch" => result["_reset_time_obj"]&.to_i,
+    "weekly_context_left_percent" => result["weekly_context_left_percent"],
+    "days_until_weekly_reset" => result["days_until_weekly_reset"],
+    "daily_context_budget_percent" => result["daily_context_budget_percent"],
+    "weekly_context_after_today_budget_percent" => result["weekly_context_after_today_budget_percent"]
+  }
+
+  File.write(SNAPSHOT_PATH, JSON.pretty_generate(payload))
+rescue Errno::EACCES, Errno::EPERM, Errno::ENOENT => e
+  warn "Warning: could not persist daily snapshot (#{e.message}); continuing without cache."
+end
+
 def build_result(secondary)
   used_percent = secondary && secondary.key?("used_percent") ? secondary["used_percent"].to_f : nil
   reset_time = secondary && secondary.key?("resets_at") ? Time.at(secondary["resets_at"].to_i) : nil
@@ -97,12 +146,21 @@ def build_result(secondary)
 end
 
 options = parse_args(ARGV)
-refresh_snapshot if options[:refresh]
+snapshot = load_daily_snapshot
+if snapshot
+  reset_epoch = snapshot["weekly_reset_epoch"]
+  reset_time_obj = reset_epoch.nil? ? nil : Time.at(reset_epoch.to_i)
+  result = snapshot.merge("_reset_time_obj" => reset_time_obj)
+else
+  # First calculation of the day is anchored to fresh session data.
+  refresh_snapshot
 
-secondary = latest_secondary_rate_limit
-abort("No session files found.") if secondary.nil?
+  secondary = latest_secondary_rate_limit
+  abort("No session files found.") if secondary.nil?
 
-result = build_result(secondary)
+  result = build_result(secondary)
+  save_daily_snapshot(result)
+end
 
 if options[:json]
   output = result.reject { |k, _| k.start_with?("_") }
