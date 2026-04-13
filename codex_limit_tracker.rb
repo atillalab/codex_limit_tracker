@@ -99,6 +99,12 @@ def load_daily_snapshot
   snapshot
 end
 
+def snapshot_result(snapshot)
+  reset_epoch = snapshot["weekly_reset_epoch"]
+  reset_time_obj = reset_epoch.nil? ? nil : Time.at(reset_epoch.to_i)
+  snapshot.merge("_reset_time_obj" => reset_time_obj)
+end
+
 def save_daily_snapshot(result)
   dir = File.dirname(SNAPSHOT_PATH)
   Dir.mkdir(dir) unless Dir.exist?(dir)
@@ -156,9 +162,9 @@ rate_limits = latest_rate_limits
 abort("No session files found.") if rate_limits.nil?
 primary = rate_limits["primary"]
 if snapshot
-  reset_epoch = snapshot["weekly_reset_epoch"]
-  reset_time_obj = reset_epoch.nil? ? nil : Time.at(reset_epoch.to_i)
-  result = snapshot.merge("_reset_time_obj" => reset_time_obj)
+  current_result = build_result(rate_limits["secondary"])
+  abort("No weekly rate limit found.") if current_result["weekly_context_left_percent"].nil? || current_result["_reset_time_obj"].nil?
+  baseline_result = snapshot_result(snapshot)
 else
   # First calculation of the day is anchored to fresh session data.
   refresh_snapshot
@@ -169,26 +175,38 @@ else
   primary = rate_limits["primary"]
   abort("No session files found.") if secondary.nil?
 
-  result = build_result(secondary)
-  save_daily_snapshot(result)
+  current_result = build_result(secondary)
+  abort("No weekly rate limit found.") if current_result["weekly_context_left_percent"].nil? || current_result["_reset_time_obj"].nil?
+  baseline_result = current_result
+  save_daily_snapshot(baseline_result)
 end
 
 if options[:json]
   output = {
-    "weekly_reset_date" => result["weekly_reset_date"],
-    "weekly_context_left_percent" => result["weekly_context_left_percent"],
-    "days_until_weekly_reset" => result["days_until_weekly_reset"],
-    "daily_context_budget_percent" => result["daily_context_budget_percent"],
-    "weekly_context_after_today_budget_percent" => result["weekly_context_after_today_budget_percent"]
+    "weekly_reset_date" => current_result["weekly_reset_date"],
+    "weekly_context_left_percent" => current_result["weekly_context_left_percent"],
+    "baseline_weekly_reset_date" => baseline_result["weekly_reset_date"],
+    "baseline_weekly_context_left_percent" => baseline_result["weekly_context_left_percent"],
+    "days_until_weekly_reset" => baseline_result["days_until_weekly_reset"],
+    "daily_context_budget_percent" => baseline_result["daily_context_budget_percent"],
+    "weekly_context_after_today_budget_percent" => baseline_result["weekly_context_after_today_budget_percent"]
   }
   puts JSON.generate(output)
   exit 0
 end
 
-left = result["weekly_context_left_percent"]
-daily_budget = result["daily_context_budget_percent"]
-after_today = result["weekly_context_after_today_budget_percent"]
-reset_time_obj = result["_reset_time_obj"]
+current_left = current_result["weekly_context_left_percent"]
+current_reset_time_obj = current_result["_reset_time_obj"]
+baseline_left = baseline_result["weekly_context_left_percent"]
+baseline_captured_at = if snapshot && snapshot["captured_at"]
+  begin
+    Time.parse(snapshot["captured_at"])
+  rescue ArgumentError, TypeError
+    nil
+  end
+end
+daily_budget = baseline_result["daily_context_budget_percent"]
+after_today = baseline_result["weekly_context_after_today_budget_percent"]
 five_hour_left = primary && primary.key?("used_percent") ? (100.0 - primary["used_percent"].to_f) : nil
 five_hour_reset_time = primary && primary.key?("resets_at") ? Time.at(primary["resets_at"].to_i) : nil
 five_hour_segment =
@@ -202,30 +220,34 @@ five_hour_segment =
     )
   end
 
-abort("No weekly rate limit found.") if left.nil? || reset_time_obj.nil?
-
 if after_today.nil?
   if daily_budget.nil?
     puts format(
-      "Weekly limit: %.0f%% left (resets %s) - %s - today's budget is unavailable",
-      left.round,
-      reset_time_obj.strftime("%H:%M on %d %b"),
+      "Weekly limit now: %.0f%% left (resets %s) - morning baseline: %.0f%% left%s - %s - today's budget is unavailable",
+      current_left.round,
+      current_reset_time_obj.strftime("%H:%M on %d %b"),
+      baseline_left.round,
+      baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M")),
       five_hour_segment
     )
   else
     puts format(
-      "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - %s - today's budget is unavailable",
-      left.round,
-      reset_time_obj.strftime("%H:%M on %d %b"),
+      "Weekly limit now: %.0f%% left (resets %s) - morning baseline: %.0f%% left%s - %.0f%% daily budget - %s - today's budget is unavailable",
+      current_left.round,
+      current_reset_time_obj.strftime("%H:%M on %d %b"),
+      baseline_left.round,
+      baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M")),
       daily_budget.round,
       five_hour_segment
     )
   end
 else
   puts format(
-    "Weekly limit: %.0f%% left (resets %s) - %.0f%% daily budget - %s - today's budget is until %.0f%% is left",
-    left.round,
-    reset_time_obj.strftime("%H:%M on %d %b"),
+    "Weekly limit now: %.0f%% left (resets %s) - morning baseline: %.0f%% left%s - %.0f%% daily budget - %s - today's budget is until %.0f%% is left",
+    current_left.round,
+    current_reset_time_obj.strftime("%H:%M on %d %b"),
+    baseline_left.round,
+    baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M")),
     daily_budget.round,
     five_hour_segment,
     after_today.round

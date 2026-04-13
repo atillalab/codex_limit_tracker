@@ -11,7 +11,8 @@ ruby codex_limit_tracker.rb
 ```
 
 - Default human mode.
-- Uses daily snapshot baseline from `~/.codex/limit_tracker_daily_snapshot.json` for weekly/daily budget values when available.
+- Shows the current weekly limit live from the latest session logs.
+- Uses the daily snapshot from `~/.codex/limit_tracker_daily_snapshot.json` only as the frozen morning baseline for daily-budget math.
 - Reads 5h limit live from latest session logs in `~/.codex/sessions`.
 - Freezes the day’s budget from the first successful run of that local day.
 - Stores the frozen baseline in `~/.codex/limit_tracker_daily_snapshot.json`.
@@ -20,7 +21,7 @@ ruby codex_limit_tracker.rb
 
 ```bash
 $ ruby codex_limit_tracker.rb
-Weekly limit: 64% left (resets 21:02 on 16 Apr) - 13% daily budget - 5h limit: 87% left (resets 14:05) - today's budget is until 51% is left
+Weekly limit now: 48% left (resets 21:02 on 16 Apr) - morning baseline: 64% left (captured 08:14) - 13% daily budget - 5h limit: 87% left (resets 14:05) - today's budget is until 51% is left
 ```
 
 ### Usage Examples
@@ -31,7 +32,7 @@ ruby codex_limit_tracker.rb --json
 
 - Machine mode.
 - Outputs only JSON:
-  `{"weekly_reset_date":"YYYY-MM-DD","weekly_context_left_percent":number,"days_until_weekly_reset":number,"daily_context_budget_percent":number,"weekly_context_after_today_budget_percent":number}`
+  `{"weekly_reset_date":"YYYY-MM-DD","weekly_context_left_percent":number,"baseline_weekly_reset_date":"YYYY-MM-DD","baseline_weekly_context_left_percent":number,"days_until_weekly_reset":number,"daily_context_budget_percent":number,"weekly_context_after_today_budget_percent":number}`
 
 ```bash
 ruby codex_limit_tracker.rb --refresh
