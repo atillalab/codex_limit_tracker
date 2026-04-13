@@ -5,6 +5,9 @@ require "date"
 
 REFRESH_CMD = 'codex exec --skip-git-repo-check --sandbox read-only "ping"'.freeze
 SNAPSHOT_PATH = File.expand_path("~/.codex/limit_tracker_daily_snapshot.json").freeze
+ANSI_RESET = "\e[0m".freeze
+ANSI_BOLD = "\e[1m".freeze
+ANSI_BRIGHT_CYAN = "\e[96m".freeze
 
 def usage
   <<~TEXT
@@ -125,6 +128,16 @@ rescue Errno::EACCES, Errno::EPERM, Errno::ENOENT => e
   warn "Warning: could not persist daily snapshot (#{e.message}); continuing without cache."
 end
 
+def color_output?
+  STDOUT.tty? && ENV["NO_COLOR"].nil?
+end
+
+def highlight_today_budget(text)
+  return text unless color_output?
+
+  "#{ANSI_BOLD}#{ANSI_BRIGHT_CYAN}#{text}#{ANSI_RESET}"
+end
+
 def build_result(secondary)
   used_percent = secondary && secondary.key?("used_percent") ? secondary["used_percent"].to_f : nil
   reset_time = secondary && secondary.key?("resets_at") ? Time.at(secondary["resets_at"].to_i) : nil
@@ -227,8 +240,8 @@ daily_budget_segment = daily_budget.nil? ? "unavailable" : format("%.0f%%", dail
 today_budget_segment = after_today.nil? ? "unavailable" : format("until %.0f%% is left", after_today.round)
 
 puts "Codex usage"
+puts highlight_today_budget(format("  Today's budget: %s", today_budget_segment))
 puts format("  Weekly limit now: %s", current_weekly_segment)
 puts format("  Morning baseline: %s", baseline_weekly_segment)
 puts format("  Daily budget: %s", daily_budget_segment)
 puts format("  5h limit: %s", five_hour_segment)
-puts format("  Today's budget: %s", today_budget_segment)

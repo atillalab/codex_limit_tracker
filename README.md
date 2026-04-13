@@ -16,17 +16,18 @@ ruby codex_limit_tracker.rb
 - Reads 5h limit live from latest session logs in `~/.codex/sessions`.
 - Freezes the day’s budget from the first successful run of that local day.
 - Stores the frozen baseline in `~/.codex/limit_tracker_daily_snapshot.json`.
+- Highlights `Today's budget` first and uses terminal color when stdout is a TTY.
 
 ### Example Output
 
 ```bash
 $ ruby codex_limit_tracker.rb
 Codex usage
+  Today's budget: until 51% is left
   Weekly limit now: 48% left (resets 21:02 on 16 Apr)
   Morning baseline: 64% left (captured 08:14)
   Daily budget: 13%
   5h limit: 87% left (resets 14:05)
-  Today's budget: until 51% is left
 ```
 
 ### Usage Examples
