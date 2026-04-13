@@ -219,7 +219,9 @@ baseline_captured_at = if snapshot && snapshot["captured_at"]
   end
 end
 daily_budget = baseline_result["daily_context_budget_percent"]
-after_today = baseline_result["weekly_context_after_today_budget_percent"]
+today_used_points = (baseline_left.nil? || current_left.nil?) ? nil : [baseline_left - current_left, 0].max
+today_used_share = (today_used_points.nil? || daily_budget.nil? || daily_budget <= 0) ? nil : (today_used_points / daily_budget) * 100.0
+today_left_share = today_used_share.nil? ? nil : [100.0 - today_used_share, 0].max
 five_hour_left = primary && primary.key?("used_percent") ? (100.0 - primary["used_percent"].to_f) : nil
 five_hour_reset_time = primary && primary.key?("resets_at") ? Time.at(primary["resets_at"].to_i) : nil
 five_hour_segment =
@@ -237,10 +239,12 @@ baseline_capture_segment = baseline_captured_at.nil? ? "" : format(" (captured %
 current_weekly_segment = format("%.0f%% left (resets %s)", current_left.round, current_reset_time_obj.strftime("%H:%M on %d %b"))
 baseline_weekly_segment = format("%.0f%% left%s", baseline_left.round, baseline_capture_segment)
 daily_budget_segment = daily_budget.nil? ? "unavailable" : format("%.0f%%", daily_budget.round)
-today_budget_segment = after_today.nil? ? "unavailable" : format("until %.0f%% is left", after_today.round)
+today_used_points_segment = today_used_points.nil? ? "unavailable" : format("%.0f%%", today_used_points.round)
+today_used_share_segment = today_used_share.nil? ? "unavailable" : format("%.0f%%", today_used_share.round)
+today_left_share_segment = today_left_share.nil? ? "unavailable" : format("%.0f%%", today_left_share.round)
 
 puts "Codex usage"
-puts highlight_today_budget(format("  Today's budget: %s", today_budget_segment))
+puts highlight_today_budget(format("  Today's budget: %s spent, %s left today (%s of %s daily budget used)", today_used_share_segment, today_left_share_segment, today_used_points_segment, daily_budget_segment))
 puts format("  Weekly limit now: %s", current_weekly_segment)
 puts format("  Morning baseline: %s", baseline_weekly_segment)
 puts format("  Daily budget: %s", daily_budget_segment)
