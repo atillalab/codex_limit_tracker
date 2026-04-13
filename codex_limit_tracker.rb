@@ -211,45 +211,24 @@ five_hour_left = primary && primary.key?("used_percent") ? (100.0 - primary["use
 five_hour_reset_time = primary && primary.key?("resets_at") ? Time.at(primary["resets_at"].to_i) : nil
 five_hour_segment =
   if five_hour_left.nil? || five_hour_reset_time.nil?
-    "5h limit unavailable"
+    "unavailable"
   else
     format(
-      "5h limit: %.0f%% left (resets %s)",
+      "%.0f%% left (resets %s)",
       five_hour_left.round,
       five_hour_reset_time.strftime("%H:%M")
     )
   end
 
-if after_today.nil?
-  if daily_budget.nil?
-    puts format(
-      "Weekly limit now: %.0f%% left (resets %s) - morning baseline: %.0f%% left%s - %s - today's budget is unavailable",
-      current_left.round,
-      current_reset_time_obj.strftime("%H:%M on %d %b"),
-      baseline_left.round,
-      baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M")),
-      five_hour_segment
-    )
-  else
-    puts format(
-      "Weekly limit now: %.0f%% left (resets %s) - morning baseline: %.0f%% left%s - %.0f%% daily budget - %s - today's budget is unavailable",
-      current_left.round,
-      current_reset_time_obj.strftime("%H:%M on %d %b"),
-      baseline_left.round,
-      baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M")),
-      daily_budget.round,
-      five_hour_segment
-    )
-  end
-else
-  puts format(
-    "Weekly limit now: %.0f%% left (resets %s) - morning baseline: %.0f%% left%s - %.0f%% daily budget - %s - today's budget is until %.0f%% is left",
-    current_left.round,
-    current_reset_time_obj.strftime("%H:%M on %d %b"),
-    baseline_left.round,
-    baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M")),
-    daily_budget.round,
-    five_hour_segment,
-    after_today.round
-  )
-end
+baseline_capture_segment = baseline_captured_at.nil? ? "" : format(" (captured %s)", baseline_captured_at.strftime("%H:%M"))
+current_weekly_segment = format("%.0f%% left (resets %s)", current_left.round, current_reset_time_obj.strftime("%H:%M on %d %b"))
+baseline_weekly_segment = format("%.0f%% left%s", baseline_left.round, baseline_capture_segment)
+daily_budget_segment = daily_budget.nil? ? "unavailable" : format("%.0f%%", daily_budget.round)
+today_budget_segment = after_today.nil? ? "unavailable" : format("until %.0f%% is left", after_today.round)
+
+puts "Codex usage"
+puts format("  Weekly limit now: %s", current_weekly_segment)
+puts format("  Morning baseline: %s", baseline_weekly_segment)
+puts format("  Daily budget: %s", daily_budget_segment)
+puts format("  5h limit: %s", five_hour_segment)
+puts format("  Today's budget: %s", today_budget_segment)

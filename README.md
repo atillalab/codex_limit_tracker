@@ -21,7 +21,12 @@ ruby codex_limit_tracker.rb
 
 ```bash
 $ ruby codex_limit_tracker.rb
-Weekly limit now: 48% left (resets 21:02 on 16 Apr) - morning baseline: 64% left (captured 08:14) - 13% daily budget - 5h limit: 87% left (resets 14:05) - today's budget is until 51% is left
+Codex usage
+  Weekly limit now: 48% left (resets 21:02 on 16 Apr)
+  Morning baseline: 64% left (captured 08:14)
+  Daily budget: 13%
+  5h limit: 87% left (resets 14:05)
+  Today's budget: until 51% is left
 ```
 
 ### Usage Examples
