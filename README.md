@@ -60,6 +60,7 @@ ruby codex_limit_tracker.rb --help
 ```bash
 ln -sf ~/Documents/path-to-codex_limit_tracker/codex_limit_tracker.rb /usr/local/bin/codex-limit-tracker
 chmod +x ~/Documents/path-to-codex_limit_tracker/codex_limit_tracker.rb
+
 codex-limit-tracker
 ```
 
