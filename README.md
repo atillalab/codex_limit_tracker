@@ -54,3 +54,15 @@ ruby codex_limit_tracker.rb --help
 ```
 
 - Shows available options.
+
+#### macOS System-Wide Usage
+
+```bash
+ln -sf ~/Documents/path-to-codex_limit_tracker/codex_limit_tracker.rb /usr/local/bin/codex-limit-tracker
+chmod +x ~/Documents/path-to-codex_limit_tracker/codex_limit_tracker.rb
+codex-limit-tracker
+```
+
+- macOS system-wide usage via symlink so `codex-limit-tracker` can be run from anywhere.
+- `chmod +x` makes the script executable and avoids `zsh: permission denied: codex-limit-tracker`.
+- If `/usr/local/bin` is not writable for your user, run the `ln` command with `sudo`.
