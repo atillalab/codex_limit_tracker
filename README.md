@@ -89,3 +89,7 @@ codex-limit-snapshot() {
   echo "Saved: $app_dir/latest.json"
 }
 ```
+
+## TODO
+
+- Consider providing a Homebrew tap later for easier installation and updates.
