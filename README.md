@@ -67,3 +67,17 @@ codex-limit-tracker
 - macOS system-wide usage via symlink so `codex-limit-tracker` can be run from anywhere.
 - `chmod +x` makes the script executable and avoids `zsh: permission denied: codex-limit-tracker`.
 - If `/usr/local/bin` is not writable for your user, run the `ln` command with `sudo`.
+
+
+## Example integration
+
+`drop-zone` can be used by other CLI tools to get a stable app-specific
+folder inside iCloud Drive.
+
+```zsh
+codex-limit-snapshot() {
+  local app_dir
+  app_dir="$(drop-zone ensure codex_limit_tracker)" || return 1
+  codex-limit-tracker --json > "$app_dir/latest.json"
+  echo "Saved: $app_dir/latest.json"
+}
