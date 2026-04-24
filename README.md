@@ -75,9 +75,17 @@ codex-limit-tracker
 folder inside iCloud Drive.
 
 ```zsh
+# profile.d/codex-limit-snapshot.sh
+#
+# Saves the latest Codex limit status as JSON into iCloud Drive.
+# This acts as a lightweight snapshot bridge between codex-limit-tracker,
+# drop-zone, and Apple Shortcuts / Apple Watch automations.
+# Output: iCloud Drive/Drop Zone/codex_limit_tracker/latest.json
+
 codex-limit-snapshot() {
   local app_dir
   app_dir="$(drop-zone ensure codex_limit_tracker)" || return 1
   codex-limit-tracker --json > "$app_dir/latest.json"
   echo "Saved: $app_dir/latest.json"
 }
+```
