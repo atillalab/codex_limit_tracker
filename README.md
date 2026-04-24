@@ -71,7 +71,7 @@ codex-limit-tracker
 
 ## Example integration
 
-`drop-zone` can be used by other CLI tools to get a stable app-specific
+[`drop_zone:`](https://github.com/atillalab/drop_zone) can be used by other CLI tools to get a stable app-specific
 folder inside iCloud Drive.
 
 ```zsh
