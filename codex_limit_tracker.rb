@@ -1,9 +1,12 @@
 #!/usr/bin/env ruby
 require "json"
+require "open3"
 require "time"
 require "date"
 
 REFRESH_CMD = 'codex exec --skip-git-repo-check --sandbox read-only "ping"'.freeze
+APP_SERVER_CMD = %w[codex -s read-only -a never app-server].freeze
+APP_SERVER_TIMEOUT_SECS = 3.0
 SNAPSHOT_PATH = File.expand_path("~/.codex/limit_tracker_daily_snapshot.json").freeze
 ANSI_RESET = "\e[0m".freeze
 ANSI_BOLD = "\e[1m".freeze
@@ -45,7 +48,127 @@ def refresh_snapshot
   warn "Warning: refresh failed; using latest cached session data."
 end
 
-def latest_rate_limits
+def normalize_rate_limit_window(window)
+  return nil unless window.is_a?(Hash)
+
+  used_percent = window["usedPercent"]
+  used_percent = window["used_percent"] if used_percent.nil?
+  resets_at = window["resetsAt"]
+  resets_at = window["resets_at"] if resets_at.nil?
+
+  return nil if used_percent.nil? || resets_at.nil?
+
+  {
+    "used_percent" => used_percent,
+    "resets_at" => resets_at
+  }
+end
+
+def rate_limits_payload_complete?(payload)
+  return false unless payload.is_a?(Hash)
+
+  primary = payload["primary"]
+  secondary = payload["secondary"]
+  !primary.nil? && !secondary.nil?
+end
+
+def app_server_handshake_messages
+  [
+    {
+      "method" => "initialize",
+      "id" => 1,
+      "params" => {
+        "clientInfo" => {
+          "name" => "codex_limit_tracker",
+          "title" => "codex_limit_tracker",
+          "version" => "0.1.0"
+        }
+      }
+    },
+    {
+      "method" => "initialized",
+      "params" => {}
+    },
+    {
+      "method" => "account/read",
+      "id" => 2,
+      "params" => { "refreshToken" => false }
+    },
+    {
+      "method" => "account/rateLimits/read",
+      "id" => 3,
+      "params" => {}
+    }
+  ]
+end
+
+def extract_rate_limits_from_app_server_message(message)
+  payload =
+    if message["id"] == 3
+      message.dig("result", "rateLimits")
+    elsif message["method"] == "account/rateLimits/updated"
+      message.dig("params", "rateLimits")
+    end
+
+  return nil unless payload.is_a?(Hash)
+
+  {
+    "primary" => normalize_rate_limit_window(payload["primary"]),
+    "secondary" => normalize_rate_limit_window(payload["secondary"])
+  }
+end
+
+def latest_rate_limits_from_app_server
+  stdout = nil
+  wait_thr = nil
+
+  Open3.popen3(*APP_SERVER_CMD) do |stdin, out, _err, thread|
+    stdout = out
+    wait_thr = thread
+
+    app_server_handshake_messages.each do |message|
+      stdin.puts(JSON.generate(message))
+    end
+    stdin.close
+
+    deadline = Time.now + APP_SERVER_TIMEOUT_SECS
+
+    loop do
+      remaining = deadline - Time.now
+      break if remaining <= 0
+
+      ready = IO.select([stdout], nil, nil, remaining)
+      break if ready.nil?
+
+      line = stdout.gets
+      break if line.nil?
+
+      begin
+        message = JSON.parse(line)
+      rescue JSON::ParserError
+        next
+      end
+
+      rate_limits = extract_rate_limits_from_app_server_message(message)
+      return rate_limits if rate_limits_payload_complete?(rate_limits)
+    end
+  end
+
+  nil
+rescue Errno::ENOENT, IOError, SystemCallError
+  nil
+ensure
+  begin
+    if wait_thr&.alive?
+      Process.kill("TERM", wait_thr.pid)
+      wait_thr.join(1)
+    end
+  rescue Errno::ESRCH
+    nil
+  end
+end
+
+def latest_rate_limits_from_logs
   files = Dir[File.expand_path("~/.codex/sessions/*/*/*/rollout-*.jsonl")]
   return nil if files.empty?
 
@@ -72,6 +195,10 @@ def latest_rate_limits
   end
 
   { "primary" => primary, "secondary" => secondary }
+end
+
+def latest_rate_limits
+  latest_rate_limits_from_app_server || latest_rate_limits_from_logs
 end
 
 def snapshot_today?(snapshot)

@@ -11,9 +11,10 @@ ruby codex_limit_tracker.rb
 ```
 
 - Default human mode.
-- Shows the current weekly limit live from the latest session logs.
+- Tries Codex `app-server` first for live 5h + weekly rate limits.
+- Falls back to the latest local session logs if `app-server` is unavailable, slow, or incomplete.
 - Uses the daily snapshot from `~/.codex/limit_tracker_daily_snapshot.json` only as the frozen morning baseline for daily-budget math.
-- Reads 5h limit live from latest session logs in `~/.codex/sessions`.
+- Reads fallback data from latest session logs in `~/.codex/sessions`.
 - Freezes the day’s budget from the first successful run of that local day.
 - Stores the frozen baseline in `~/.codex/limit_tracker_daily_snapshot.json`.
 - Highlights `Today's budget` first and spells out how much of today's budget is already used.
@@ -48,6 +49,14 @@ ruby codex_limit_tracker.rb --refresh
 - On first run of a local day without a saved daily snapshot, the script refreshes once with `codex exec --skip-git-repo-check --sandbox read-only "ping"` before locking the daily baseline.
 - The `--refresh` flag is currently accepted for CLI compatibility, but does not change behavior.
 - If refresh fails, script warns and falls back to cached data.
+
+### Data source order
+
+1. `codex -s read-only -a never app-server`
+2. Latest local session log in `~/.codex/sessions/*/*/*/rollout-*.jsonl`
+
+- The script uses a short timeout for `app-server` and falls back automatically if the RPC path does not return complete rate-limit data quickly enough.
+- Human and `--json` output formats are unchanged regardless of which source succeeds.
 
 ```bash
 ruby codex_limit_tracker.rb --help
