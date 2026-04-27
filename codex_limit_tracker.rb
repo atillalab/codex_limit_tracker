@@ -247,7 +247,9 @@ def save_daily_snapshot(result)
     "weekly_context_left_percent" => result["weekly_context_left_percent"],
     "days_until_weekly_reset" => result["days_until_weekly_reset"],
     "daily_context_budget_percent" => result["daily_context_budget_percent"],
-    "weekly_context_after_today_budget_percent" => result["weekly_context_after_today_budget_percent"]
+    "weekly_context_after_today_budget_percent" => result["weekly_context_after_today_budget_percent"],
+    "today_spent_percent" => 0.0,
+    "today_left_percent" => 100.0
   }
 
   File.write(SNAPSHOT_PATH, JSON.pretty_generate(payload))
@@ -321,20 +323,6 @@ else
   save_daily_snapshot(baseline_result)
 end
 
-if options[:json]
-  output = {
-    "weekly_reset_date" => current_result["weekly_reset_date"],
-    "weekly_context_left_percent" => current_result["weekly_context_left_percent"],
-    "baseline_weekly_reset_date" => baseline_result["weekly_reset_date"],
-    "baseline_weekly_context_left_percent" => baseline_result["weekly_context_left_percent"],
-    "days_until_weekly_reset" => baseline_result["days_until_weekly_reset"],
-    "daily_context_budget_percent" => baseline_result["daily_context_budget_percent"],
-    "weekly_context_after_today_budget_percent" => baseline_result["weekly_context_after_today_budget_percent"]
-  }
-  puts JSON.generate(output)
-  exit 0
-end
-
 current_left = current_result["weekly_context_left_percent"]
 current_reset_time_obj = current_result["_reset_time_obj"]
 baseline_left = baseline_result["weekly_context_left_percent"]
@@ -347,8 +335,26 @@ baseline_captured_at = if snapshot && snapshot["captured_at"]
 end
 daily_budget = baseline_result["daily_context_budget_percent"]
 today_used_points = (baseline_left.nil? || current_left.nil?) ? nil : [baseline_left - current_left, 0].max
-today_used_share = (today_used_points.nil? || daily_budget.nil? || daily_budget <= 0) ? nil : (today_used_points / daily_budget) * 100.0
-today_left_share = today_used_share.nil? ? nil : [100.0 - today_used_share, 0].max
+today_spent_percent = (today_used_points.nil? || daily_budget.nil? || daily_budget <= 0) ? nil : (today_used_points / daily_budget) * 100.0
+today_left_share = today_spent_percent.nil? ? nil : [100.0 - today_spent_percent, 0].max
+
+if options[:json]
+  output = {
+    "weekly_reset_date" => current_result["weekly_reset_date"],
+    "weekly_context_left_percent" => current_result["weekly_context_left_percent"],
+    "baseline_weekly_reset_date" => baseline_result["weekly_reset_date"],
+    "baseline_weekly_context_left_percent" => baseline_result["weekly_context_left_percent"],
+    "days_until_weekly_reset" => baseline_result["days_until_weekly_reset"],
+    "daily_context_budget_percent" => baseline_result["daily_context_budget_percent"],
+    "weekly_context_after_today_budget_percent" => baseline_result["weekly_context_after_today_budget_percent"],
+    "today_spent_percent" => today_spent_percent,
+    "today_left_percent" => today_left_share
+  }
+  puts JSON.generate(output)
+  exit 0
+end
+
+today_used_share = today_spent_percent
 five_hour_left = primary && primary.key?("used_percent") ? (100.0 - primary["used_percent"].to_f) : nil
 five_hour_reset_time = primary && primary.key?("resets_at") ? Time.at(primary["resets_at"].to_i) : nil
 five_hour_segment =

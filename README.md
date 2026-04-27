@@ -39,7 +39,7 @@ ruby codex_limit_tracker.rb --json
 
 - Machine mode.
 - Outputs only JSON:
-  `{"weekly_reset_date":"YYYY-MM-DD","weekly_context_left_percent":number,"baseline_weekly_reset_date":"YYYY-MM-DD","baseline_weekly_context_left_percent":number,"days_until_weekly_reset":number,"daily_context_budget_percent":number,"weekly_context_after_today_budget_percent":number}`
+  `{"weekly_reset_date":"YYYY-MM-DD","weekly_context_left_percent":number,"baseline_weekly_reset_date":"YYYY-MM-DD","baseline_weekly_context_left_percent":number,"days_until_weekly_reset":number,"daily_context_budget_percent":number,"weekly_context_after_today_budget_percent":number,"today_spent_percent":number,"today_left_percent":number}`
 
 ```bash
 ruby codex_limit_tracker.rb --refresh
