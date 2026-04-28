@@ -35,6 +35,8 @@ TIP
   and 5-hour limits can prevent accumulated budget from being fully used.
 ```
 
+The final `TIP` section shows one randomly selected tip from the built-in tip pool.
+
 ### Usage Examples
 
 ```bash

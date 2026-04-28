@@ -11,6 +11,12 @@ SNAPSHOT_PATH = File.expand_path("~/.codex/limit_tracker_daily_snapshot.json").f
 ANSI_RESET = "\e[0m".freeze
 ANSI_BOLD = "\e[1m".freeze
 ANSI_BRIGHT_CYAN = "\e[96m".freeze
+TIP_MESSAGES = [
+  "Token budgets are “use it or lose it.” Unused weekly capacity may reset, " \
+    "and 5-hour limits can prevent accumulated budget from being fully used.",
+  "Aim to use about 70% of today’s budget during normal work. Keep the rest " \
+    "as a buffer for urgent fixes, follow-up questions, or unexpected tasks."
+].freeze
 
 def usage
   <<~TEXT
@@ -273,6 +279,36 @@ def highlight_tip_phrase(text)
   "#{ANSI_BOLD}#{text}#{ANSI_RESET}"
 end
 
+def select_tip(random: Random)
+  TIP_MESSAGES.fetch(random.rand(TIP_MESSAGES.length))
+end
+
+def wrap_text(text, width: 80, indent: "  ")
+  line_width = width - indent.length
+  lines = []
+  current_line = +""
+
+  text.split(/\s+/).each do |word|
+    if current_line.empty?
+      current_line = word
+    elsif current_line.length + 1 + word.length <= line_width
+      current_line << " " << word
+    else
+      lines << current_line
+      current_line = word
+    end
+  end
+
+  lines << current_line unless current_line.empty?
+  lines.map { |line| "#{indent}#{line}" }
+end
+
+def format_tip_lines(tip)
+  wrap_text(tip).map do |line|
+    line.gsub("use it or lose it", highlight_tip_phrase("use it or lose it"))
+  end
+end
+
 def build_result(secondary)
   used_percent = secondary && secondary.key?("used_percent") ? secondary["used_percent"].to_f : nil
   reset_time = secondary && secondary.key?("resets_at") ? Time.at(secondary["resets_at"].to_i) : nil
@@ -390,5 +426,4 @@ puts format("  Daily budget: %s", daily_budget_segment)
 puts format("  5h limit: %s", five_hour_segment)
 puts
 puts "TIP"
-puts "  Token budgets are “#{highlight_tip_phrase("use it or lose it")}.” Unused weekly capacity may reset,"
-puts "  and 5-hour limits can prevent accumulated budget from being fully used."
+puts format_tip_lines(select_tip)
