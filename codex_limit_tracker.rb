@@ -267,6 +267,12 @@ def highlight_today_budget(text)
   "#{ANSI_BOLD}#{ANSI_BRIGHT_CYAN}#{text}#{ANSI_RESET}"
 end
 
+def highlight_tip_phrase(text)
+  return text unless color_output?
+
+  "#{ANSI_BOLD}#{text}#{ANSI_RESET}"
+end
+
 def build_result(secondary)
   used_percent = secondary && secondary.key?("used_percent") ? secondary["used_percent"].to_f : nil
   reset_time = secondary && secondary.key?("resets_at") ? Time.at(secondary["resets_at"].to_i) : nil
@@ -382,3 +388,7 @@ puts format("  Weekly limit now: %s", current_weekly_segment)
 puts format("  Morning baseline: %s", baseline_weekly_segment)
 puts format("  Daily budget: %s", daily_budget_segment)
 puts format("  5h limit: %s", five_hour_segment)
+puts
+puts "Tip"
+puts "  Token budgets are “#{highlight_tip_phrase("use it or lose it")}.” Unused weekly capacity may reset,"
+puts "  and 5-hour limits can prevent accumulated budget from being fully used."

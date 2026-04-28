@@ -29,6 +29,10 @@ Codex usage
   Morning baseline: 64% left (captured 08:14)
   Daily budget: 13%
   5h limit: 87% left (resets 14:05)
+
+Tip
+  Token budgets are “use it or lose it.” Unused weekly capacity may reset,
+  and 5-hour limits can prevent accumulated budget from being fully used.
 ```
 
 ### Usage Examples
