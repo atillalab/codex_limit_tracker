@@ -30,7 +30,7 @@ Codex usage
   Daily budget: 13%
   5h limit: 87% left (resets 14:05)
 
-Tip
+TIP
   Token budgets are “use it or lose it.” Unused weekly capacity may reset,
   and 5-hour limits can prevent accumulated budget from being fully used.
 ```

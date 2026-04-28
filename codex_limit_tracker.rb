@@ -389,6 +389,6 @@ puts format("  Morning baseline: %s", baseline_weekly_segment)
 puts format("  Daily budget: %s", daily_budget_segment)
 puts format("  5h limit: %s", five_hour_segment)
 puts
-puts "Tip"
+puts "TIP"
 puts "  Token budgets are “#{highlight_tip_phrase("use it or lose it")}.” Unused weekly capacity may reset,"
 puts "  and 5-hour limits can prevent accumulated budget from being fully used."
