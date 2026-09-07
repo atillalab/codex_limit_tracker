@@ -382,6 +382,8 @@ today_left_share = today_spent_percent.nil? ? nil : [100.0 - today_spent_percent
 
 if options[:json]
   output = {
+    "five_hour_context_left_percent" => primary && primary.key?("used_percent") ? (100.0 - primary["used_percent"].to_f) : nil,
+    "five_hour_resets_at" => primary && primary.key?("resets_at") ? Time.at(primary["resets_at"].to_i).iso8601 : nil,
     "weekly_reset_date" => current_result["weekly_reset_date"],
     "weekly_context_left_percent" => current_result["weekly_context_left_percent"],
     "baseline_weekly_reset_date" => baseline_result["weekly_reset_date"],
